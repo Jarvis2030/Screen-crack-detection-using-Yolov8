@@ -15,7 +15,7 @@ data annotation, model selection and performance evaluation. The overall develop
 
 ---
 ## Result preview
-
+<img width="233" alt="result-2" src="https://github.com/Jarvis2030/Screen-crack-detection-using-Yolov8/assets/77675271/f0afed7b-d28f-4c83-9722-ba01055a5e39">
 
 ## overview
 
