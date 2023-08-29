@@ -4,6 +4,7 @@ from ultralytics import YOLO
 import numpy as np
 import cv2
 from time import time
+from torchsummary import summary
 
 class defectDetaction():
 
@@ -21,6 +22,8 @@ class defectDetaction():
             model = torch.hub.load('.', 'custom', path = model_name, source='local') 
         else:
             model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained = True)
+            summary(model, (3,224,224))
+            
         
         return model
     
@@ -74,5 +77,5 @@ class defectDetaction():
                     break
 
 
-detector = defectDetaction(cap_index=0, model='best.pt')
+detector = defectDetaction(cap_index=0)
 detector()
