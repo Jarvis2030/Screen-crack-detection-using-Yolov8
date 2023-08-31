@@ -1,11 +1,12 @@
 
 import torch
 import numpy as np
+import pandas as pd
 import cv2
 from time import time
 import yaml
 
-from utils.metrics import bbox_iou
+from yolov5.utils.metrics import bbox_iou
 from yaml.loader import SafeLoader
 from argparse import ArgumentParser
 
@@ -29,7 +30,6 @@ class defectDetection:
         print("Using service:", self.service)
 
 
-    
 
     def load_model(self, model_name):
         if self.model_type == 'YOLO':
@@ -44,6 +44,7 @@ class defectDetection:
     def class_to_label(self, label_class):
         return self.classes[int(label_class)]
     
+    
     def score_frame(self, frame):
 
         self.model.to(self.service)
@@ -51,12 +52,15 @@ class defectDetection:
 
         if self.op_type == 'Testing':
             # find the ground truth from the data
-            truth = torch.tensor([list(map(float, x.split())) for x in open("./labels/test/" + name + ".txt").readlines()])
+            truth = torch.tensor([list(map(float, x.split())) for x in open("./labels/test/.txt").readlines()])
             # find all the iou of the image
+            all_iou = []
             for r in results.xywh[0]:
                 iou = float(max(bbox_iou(r[None, :4], truth[:, 1:])))
+                all_iou.append(iou)
                 *xywh, p, c = r
-                self.plot_boxes(frame, xywh, p, c, iou)
+                frame = self.plot_boxes(frame, xywh, p, c, iou)
+            self.save_result(all_iou)
         
         
         if self.op_type == "Prediction":
@@ -89,6 +93,14 @@ class defectDetection:
         cv2.putText(frame, text, pt1, cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 1)
             
         return frame
+    
+    def save_result (self, all_iou):
+        avg = all_iou.mean()
+        df = pd.DataFrame(all_iou)
+        df['average'] = avg
+        df.to_csv('iou_score.csv')
+        
+
     
     def __call__(self):
 
