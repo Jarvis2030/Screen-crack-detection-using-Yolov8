@@ -1,81 +1,124 @@
 
 import torch
-from ultralytics import YOLO
 import numpy as np
 import cv2
 from time import time
-from torchsummary import summary
+import yaml
 
-class defectDetaction():
+from utils.metrics import bbox_iou
+from yaml.loader import SafeLoader
+from argparse import ArgumentParser
 
-    def __init__(self, model = None,cap_index = 0) -> None:
+class defectDetection:
+
+    def __init__(self, 
+                 model = None, 
+                 model_type ="YOLO", 
+                 op_type = "Prediction", 
+                 cap_index = 0,
+                 data_path = None,
+                 ) -> None:
+        
         self.cap_index = cap_index
+        self.model_type = model_type
         self.model = self.load_model(model)
+        self.op_type = op_type # either "Real-time" or "Image"
         self.classes = self.model.names
+        self.data_path = data_path
         self.service = 'cuda' if torch.cuda.is_available() else 'cpu'
         print("Using service:", self.service)
 
 
+    
+
     def load_model(self, model_name):
-        if model_name: 
-            print("we got a model!")
-            model = torch.hub.load('.', 'custom', path = model_name, source='local') 
-        else:
-            model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained = True)
-            summary(model, (3,224,224))
-            
+        if self.model_type == 'YOLO':
+            if model_name: 
+                model = torch.hub.load('.', 'custom', path = model_name, source='local') 
+            else:
+                model = torch.hub.load('ultralytics/yolov5', 'yolov5s', pretrained = True)
         
         return model
     
-    def score_frame(self, frame):
-        self.model.to(self.service)
-        frame = [frame]
-        results = self.model(frame)
-        labels, cord = results.xyxyn[0][:,-1], results.xyxyn[0][:, :-1]
-        return labels, cord
-    
-    def class_to_label(self, label_class):
 
+    def class_to_label(self, label_class):
         return self.classes[int(label_class)]
     
-    def plot_boxes(self, result, frame):
-        label, cord = result
-        n = len(label)
-        x,y = frame.shape[1],frame.shape[0]
-        for i in range(n):
-            row = cord[i]
-            print(row)
-            if row[4] >= 0.2: # Thereshold for the confidence score
-                x1, y1, x2, y2 = int(row[0]*x), int(row[1]*y), int(row[2]*x), int(row[3]*y)
-                outline_bg = (0,255,0)
-                cv2.rectangle(frame, (x1,y1),(x2,y2),outline_bg,2)
-                cv2.putText(frame, self.class_to_label(label[i]),(x1,y1), cv2.FONT_HERSHEY_SIMPLEX, 0.9, outline_bg, 2)
+    def score_frame(self, frame):
+
+        self.model.to(self.service)
+        results = self.model(frame)
+
+        if self.op_type == 'Testing':
+            # find the ground truth from the data
+            truth = torch.tensor([list(map(float, x.split())) for x in open("./labels/test/" + name + ".txt").readlines()])
+            # find all the iou of the image
+            for r in results.xywh[0]:
+                iou = float(max(bbox_iou(r[None, :4], truth[:, 1:])))
+                *xywh, p, c = r
+                self.plot_boxes(frame, xywh, p, c, iou)
+        
+        
+        if self.op_type == "Prediction":
+            print(self.classes)
+            for r in results.xywh[0]:
+                *xywh, p, c = r
+                print(f"The result is: {xywh,p,c}")
+                frame = self.plot_boxes(frame, xywh, p, c) # plot the result on the frame
+        
+        return frame
+    
+    
+    def plot_boxes(self, frame, xywh, confidence, label, iou = None):
+        x = int(xywh[0])
+        y = int(xywh[1])
+        w = int(xywh[2] / 2)
+        h = int(xywh[3] / 2)
+        print(x,y,w,h)
+
+        pt1 = (x - w, y - h)
+        pt2 = (x + w, y + h)
+        cv2.rectangle(frame, pt1, pt2, (0,255,0), 2)
+
+        text =self.class_to_label(label) + "  " + str(round(float(confidence), 2))
+        if self.op_type == 'Testing': text += "  " + str(round(iou, 2))
+
+        (w2, h2), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_PLAIN, 1, 1)
+        pt3 = (x - w + w2, y - h - h2)
+        cv2.rectangle(frame, pt1, pt3, (0,255,0), -1)
+        cv2.putText(frame, text, pt1, cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 1)
             
-            return frame
+        return frame
     
     def __call__(self):
 
-            cam = cv2.VideoCapture(1)
-            while cam.isOpened():
+        # img = cv2.imread('/Users/linyuchun/Desktop/Crowd-of-Diverse-People_800x528-768x512.jpg')
+        # frame = self.score_frame(img)
 
-                ret,frame = cam.read()
+        # cv2.imshow("Yolo detection", frame)
+        # cv2.waitKey(5000)
+
+
+        cam = cv2.VideoCapture(1)
+        while cam.isOpened():
+
+            _,frame = cam.read()
 
             
-                starttime = time()
-                results = self.score_frame(frame)
-                frame = self.plot_boxes(results, frame)
-                endtime = time()
+            starttime = time()
+            results = self.score_frame(frame)
+            endtime = time()
                 
-                fps = 1/np.round(endtime-starttime, 2)
-                cv2.putText(frame, f"FPS: {fps}", (20,70), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0,255,0), 2)
+            fps = 1/np.round(endtime-starttime, 2)
+            cv2.putText(results, f"FPS: {fps}", (20,70), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0,255,0), 2)
 
-                cv2.imshow("Yolo detection", frame)
+            cv2.imshow("Yolo detection", results)
 
-                k = cv2.waitKey(1) & 0xFF
+            k = cv2.waitKey(1) & 0xFF
 
-                if k == 27:
-                    break
+            if k == 27:
+                break
 
 
-detector = defectDetaction(cap_index=0)
+detector = defectDetection(cap_index=0, model_type= "YOLO", op_type="Prediction")
 detector()
