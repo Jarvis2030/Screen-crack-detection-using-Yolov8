@@ -7,6 +7,8 @@ data annotation, model selection and performance evaluation. The overall develop
 ---
 ## Result preview
 <img width="233" alt="result-2" src="https://github.com/Jarvis2030/Screen-crack-detection-using-Yolov8/assets/77675271/f0afed7b-d28f-4c83-9722-ba01055a5e39">
+<img width="233" alt="result-v1" src="https://github.com/Jarvis2030/Screen-crack-detection-using-Yolov8/assets/77675271/77db917a-a257-42f6-8c4a-98adaabb3429">
+<img width="747" alt="server detection image" src="https://github.com/Jarvis2030/Screen-crack-detection-using-Yolov8/assets/77675271/4a440bce-7808-431e-939f-46387f6203a6">
 
 ## overview
 ---
@@ -68,6 +70,11 @@ Since this is a testing model, I eventually use V8-nano for faster training and 
 
 
 ## Evaluation
+![TTA-burn-in-result](https://github.com/Jarvis2030/Screen-crack-detection-using-Yolov8/assets/77675271/6896a97e-3a79-453c-9e9e-f9abd9d2209f)
+![TTA-crack-result](https://github.com/Jarvis2030/Screen-crack-detection-using-Yolov8/assets/77675271/39942e39-05ef-4398-a750-c9cf361d1409)
+![TTA-dead-pixel-result](https://github.com/Jarvis2030/Screen-crack-detection-using-Yolov8/assets/77675271/118058bf-2acc-41ab-9f5e-2a36879b8b5c)
+![TTA-scratch-result](https://github.com/Jarvis2030/Screen-crack-detection-using-Yolov8/assets/77675271/05933568-58f8-48c1-981b-849b4d63ced0)
+
 |Category	| Defect Type	|Achievability|Best Approach|Recall|Precision|F1 score|
 |:-------:|:-----------:|:-----------:|:-----------:|:----:|:-------:|:------:|
 External	|Monitor Scratch	|Yes|	YOLOv8|	63.6%	|89.4%|	74.3%|
